@@ -56,34 +56,46 @@ impl App {
         }
     }
 
-    pub fn run(self, query: Option<String>) -> Result<()> {
-        let mut arguments = self.arguments;
-        let fzf_arguments = self
-            .fzf_arguments
+    fn make_fzf_arguments(&self, query: Option<String>) -> String {
+        let exe = std::env::current_exe()
+            .expect("Failed to get fzfmenu executable") // This doesn't worth propagating error
+            .to_string_lossy()
+            .to_string();
+        let mut fzf_arguments = vec![
+            format!("--bind=enter:execute({exe} runner {{}})+abort"),
+            format!("--bind=start:reload:{exe} picker {{q}}"),
+        ];
+
+        if self.bind_change {
+            fzf_arguments.push(format!("--bind=change:reload:{exe} picker {{q}}"));
+        }
+
+        if let Some(ref q) = query
+            && !q.is_empty()
+        {
+            let query_str: String = q.quoted(Bash);
+            fzf_arguments.push(format!("--query={query_str}",));
+        }
+
+        self.fzf_arguments
             .iter()
+            .chain(fzf_arguments.iter())
             .map(|arg| arg.quoted(Bash))
             // Assumed the shell used by fzf is bash-compatible
             .collect::<Vec<String>>()
-            .join(" ");
-        let exe = std::env::current_exe()?.to_string_lossy().to_string();
-        let query = match query {
-            Some(query) => "--query ".to_owned() + "'" + &query + "'",
-            None => "".to_owned(),
-        };
-        let bind_events = if self.bind_change {
-            "start,change"
-        } else {
-            "start"
-        };
-        let fzf_cmd = format!(
-            "fzf {0} {1} --bind '{3}:reload:{2} picker {{q}}' --bind 'enter:execute({2} runner {{}})+abort'",
-            &fzf_arguments, query, &exe, bind_events,
-        );
+            .join(" ")
+    }
+
+    pub fn run(self, query: Option<String>) -> Result<()> {
+        let mut arguments = self.arguments.clone();
+        let fzf_cmd = format!("fzf {}", self.make_fzf_arguments(query));
+
         arguments.extend(
             ["-e", "sh", "-c", &fzf_cmd]
                 .into_iter()
                 .map(|str| str.to_string()),
         );
+
         Command::new(self.terminal)
             .args(arguments)
             .spawn()?
