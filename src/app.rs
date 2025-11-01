@@ -2,6 +2,8 @@ use std::{fs::read_to_string, path::PathBuf, process::Command};
 
 use anyhow::{Result, anyhow};
 
+use shell_quote::{Bash, QuoteRefExt};
+
 use crate::plugin::Plugin;
 
 #[derive(serde::Deserialize)]
@@ -56,7 +58,13 @@ impl App {
 
     pub fn run(self, query: Option<String>) -> Result<()> {
         let mut arguments = self.arguments;
-        let fzf_arguments = self.fzf_arguments.join(" ");
+        let fzf_arguments = self
+            .fzf_arguments
+            .iter()
+            .map(|arg| arg.quoted(Bash))
+            // Assumed the shell used by fzf is bash-compatible
+            .collect::<Vec<String>>()
+            .join(" ");
         let exe = std::env::current_exe()?.to_string_lossy().to_string();
         let query = match query {
             Some(query) => "--query ".to_owned() + "'" + &query + "'",
