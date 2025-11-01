@@ -9,6 +9,7 @@ pub struct App {
     pub terminal: String,
     pub arguments: Option<Vec<String>>,
     pub fzf_arguments: Option<Vec<String>>,
+    pub bind_change: Option<bool>,
     pub plugins: Vec<Plugin>,
 }
 
@@ -48,9 +49,14 @@ impl App {
             Some(query) => "--query ".to_owned() + "'" + &query + "'",
             None => "".to_owned(),
         };
+        let bind_events = if self.bind_change.unwrap_or(true) {
+            "start,change"
+        } else {
+            "start"
+        };
         let fzf_cmd = format!(
-            "fzf {0} {1} --bind 'start,change:reload:{2} picker {{q}}' --bind 'enter:execute({2} runner {{}})+abort'",
-            &fzf_arguments, query, &exe,
+            "fzf {0} {1} --bind '{3}:reload:{2} picker {{q}}' --bind 'enter:execute({2} runner {{}})+abort'",
+            &fzf_arguments, query, &exe, bind_events,
         );
         arguments.extend(
             ["-e", "sh", "-c", &fzf_cmd]
