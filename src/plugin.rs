@@ -1,4 +1,4 @@
-use std::{fmt, io::BufRead, process::Command};
+use std::{fmt, io, process::Command};
 
 use anyhow::Result;
 use colored::Colorize;
@@ -15,16 +15,13 @@ pub struct Plugin {
 impl Plugin {
     pub fn run_picker(&self, arguments: &str) -> Result<()> {
         if let Some(arguments) = arguments.strip_prefix(&self.prefix) {
-            let output = Command::new("sh")
+            let mut child = Command::new("sh")
                 .args(["-c", &self.picker.replace("{}", arguments)])
-                .output()?;
-            if output.status.success() {
-                let lines = output.stdout.lines().collect::<Vec<_>>();
-                for line in lines {
-                    let line = line?;
-                    println!("{}{}", self.prefix, line);
-                }
-            }
+                .stdout(std::process::Stdio::piped())
+                .spawn()?;
+            let mut stdout = child.stdout.take().unwrap();
+            io::copy(&mut stdout, &mut io::stdout())?; // pipe the output to stdout
+            child.wait()?;
         }
         Ok(())
     }
