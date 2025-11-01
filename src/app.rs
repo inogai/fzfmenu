@@ -49,7 +49,7 @@ impl App {
             None => "".to_owned(),
         };
         let fzf_cmd = format!(
-            "fzf {0} {1} --bind 'start,change:reload:{2} picker {{q}}' --bind 'enter:execute(setsid {2} runner {{}})+abort'",
+            "fzf {0} {1} --bind 'start,change:reload:{2} picker {{q}}' --bind 'enter:execute({2} runner {{}})+abort'",
             &fzf_arguments, query, &exe,
         );
         arguments.extend(
