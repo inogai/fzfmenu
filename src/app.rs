@@ -5,12 +5,25 @@ use anyhow::{Result, anyhow};
 use crate::plugin::Plugin;
 
 #[derive(serde::Deserialize)]
+#[serde(default)]
 pub struct App {
     pub terminal: String,
-    pub arguments: Option<Vec<String>>,
-    pub fzf_arguments: Option<Vec<String>>,
-    pub bind_change: Option<bool>,
+    pub arguments: Vec<String>,
+    pub fzf_arguments: Vec<String>,
+    pub bind_change: bool,
     pub plugins: Vec<Plugin>,
+}
+
+impl Default for App {
+    fn default() -> Self {
+        Self {
+            terminal: "alacritty".to_string(),
+            arguments: vec![],
+            fzf_arguments: vec![],
+            bind_change: true,
+            plugins: vec![],
+        }
+    }
 }
 
 impl App {
@@ -42,14 +55,14 @@ impl App {
     }
 
     pub fn run(self, query: Option<String>) -> Result<()> {
-        let mut arguments = self.arguments.unwrap_or_default();
-        let fzf_arguments = self.fzf_arguments.unwrap_or_default().join(" ");
+        let mut arguments = self.arguments;
+        let fzf_arguments = self.fzf_arguments.join(" ");
         let exe = std::env::current_exe()?.to_string_lossy().to_string();
         let query = match query {
             Some(query) => "--query ".to_owned() + "'" + &query + "'",
             None => "".to_owned(),
         };
-        let bind_events = if self.bind_change.unwrap_or(true) {
+        let bind_events = if self.bind_change {
             "start,change"
         } else {
             "start"
