@@ -12,7 +12,6 @@ pub struct App {
     pub terminal: String,
     pub arguments: Vec<String>,
     pub fzf_arguments: Vec<String>,
-    pub bind_change: bool,
     pub plugins: Vec<Plugin>,
 }
 
@@ -22,7 +21,6 @@ impl Default for App {
             terminal: "alacritty".to_string(),
             arguments: vec![],
             fzf_arguments: vec![],
-            bind_change: true,
             plugins: vec![],
         }
     }
@@ -56,6 +54,13 @@ impl App {
         }
     }
 
+    fn get_plugin(&self, query: &str) -> Option<&Plugin> {
+        self.plugins
+            .iter()
+            .filter(|plugin| query.starts_with(&plugin.prefix))
+            .max_by_key(|plugin| plugin.prefix.len())
+    }
+
     fn make_fzf_arguments(&self, query: Option<String>) -> String {
         let exe = std::env::current_exe()
             .expect("Failed to get fzfmenu executable") // This doesn't worth propagating error
@@ -66,7 +71,11 @@ impl App {
             format!("--bind=start:reload:{exe} picker {{q}}"),
         ];
 
-        if self.bind_change {
+        if match self.get_plugin(query.as_deref().unwrap_or("")) {
+            Some(plugin) => plugin.bind_change,
+            None => true,
+        } {
+            println!("bind change");
             fzf_arguments.push(format!("--bind=change:reload:{exe} picker {{q}}"));
         }
 
@@ -104,11 +113,7 @@ impl App {
     }
 
     pub fn run_picker(self, arguments: String) -> Result<()> {
-        let plugins = self
-            .plugins
-            .into_iter()
-            .filter(|plugin| arguments.starts_with(&plugin.prefix))
-            .max_by_key(|plugin| plugin.prefix.len());
+        let plugins = self.get_plugin(&arguments);
         if let Some(plugin) = plugins {
             plugin.run_picker(&arguments)?;
         }
@@ -116,11 +121,7 @@ impl App {
     }
 
     pub fn run_runner(self, arguments: String) -> Result<()> {
-        let plugins = self
-            .plugins
-            .into_iter()
-            .filter(|plugin| arguments.starts_with(&plugin.prefix))
-            .max_by_key(|plugin| plugin.prefix.len());
+        let plugins = self.get_plugin(&arguments);
         if let Some(plugin) = plugins {
             plugin.run_runner(&arguments)?;
         }

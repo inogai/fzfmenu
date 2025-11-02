@@ -3,6 +3,10 @@ use std::{fmt, io, process::Command};
 use anyhow::Result;
 use colored::Colorize;
 
+fn default_bind_change() -> bool {
+    true
+}
+
 #[derive(serde::Deserialize)]
 pub struct Plugin {
     pub name: String,
@@ -10,6 +14,8 @@ pub struct Plugin {
     pub prefix: String,
     pub picker: String,
     pub runner: String,
+    #[serde(default = "default_bind_change")]
+    pub bind_change: bool,
 }
 
 impl Plugin {
